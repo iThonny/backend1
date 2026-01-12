@@ -74,9 +74,9 @@ crearTablas();
 // ======================
 async function crearAdminPorDefecto() {
   try {
-    const cedula = "1314571769";
-    const nombre = "Angel Cedeño";
-    const clave = "cedeno2003";
+    const cedula = "123456789";
+    const nombre = "Andres";
+    const clave = "1234";
 
     const check = await pool.query(
       "SELECT * FROM usuarios WHERE cedula=$1",
