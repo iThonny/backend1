@@ -1,200 +1,234 @@
-import './style.css'
+const api = "http://localhost:3000";
 
-const API = 'http://localhost:3000';
+// ====================
+// ELEMENTOS
+// ====================
+const loginSection = document.getElementById("login-section");
+const dashboardSection = document.getElementById("dashboard-section");
+const usuarioLogueado = document.getElementById("usuario-logueado");
 
-const loginSection = document.getElementById('login-section');
-const dashboardSection = document.getElementById('dashboard-section');
-const tablaUsuarios = document.getElementById('tabla-usuarios-body');
-const tablaMaterias = document.getElementById('tabla-materias-body');
+const formLogin = document.getElementById("form-login");
+const loginCedula = document.getElementById("login-cedula");
+const loginClave = document.getElementById("login-clave");
 
-// --- LOGIN ---
-document.getElementById('form-login').addEventListener('submit', async (e) => {
+const panelUsuarios = document.getElementById("panel-usuarios");
+const panelMaterias = document.getElementById("panel-materias");
+const panelEstudiantes = document.getElementById("panel-estudiantes");
+const panelNotas = document.getElementById("panel-notas");
+
+// Formularios
+const formUsuario = document.getElementById("form-usuario");
+const formMateria = document.getElementById("form-materia");
+const formEstudiante = document.getElementById("form-estudiante");
+const formNotas = document.getElementById("form-notas");
+
+// Tablas
+const tablaUsuariosBody = document.getElementById("tabla-usuarios-body");
+const tablaMateriasBody = document.getElementById("tabla-materias-body");
+const tablaEstudiantesBody = document.getElementById("tabla-estudiantes-body");
+const tablaNotasBody = document.getElementById("tabla-notas-body");
+
+// Selects de notas
+const notaEstudiante = document.getElementById("nota-estudiante");
+const notaMateria = document.getElementById("nota-materia");
+
+// ====================
+// LOGIN
+// ====================
+let usuarioActual = null;
+
+formLogin.addEventListener("submit", async e => {
   e.preventDefault();
-  const cedula = document.getElementById('login-cedula').value;
-  const clave = document.getElementById('login-clave').value;
-
   try {
-    const res = await fetch(`${API}/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ cedula, clave })
+    const res = await fetch(`${api}/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        cedula: loginCedula.value,
+        clave: loginClave.value
+      })
     });
     const data = await res.json();
+    if (!res.ok) throw new Error(data.msg);
 
-    if (res.ok) {
-      // Alerta bonita de éxito
-      Swal.fire({
-        icon: 'success',
-        title: '¡Bienvenido!',
-        text: `Hola, ${data.usuario.nombre}`,
-        timer: 1500,
-        showConfirmButton: false
-      });
+    usuarioActual = data.usuario;
+    usuarioLogueado.textContent = usuarioActual.nombre;
 
-      document.getElementById('usuario-logueado').innerText = data.usuario.nombre;
-      loginSection.classList.add('oculto');
-      loginSection.classList.remove('d-flex'); // Quitar el centrado flex
-      dashboardSection.classList.remove('oculto');
-      
-      cargarUsuarios();
-      cargarMaterias();
-    } else {
-      Swal.fire('Error', data.msg, 'error');
-    }
-  } catch (error) {
-    Swal.fire('Error de Conexión', 'No se pudo conectar al servidor', 'error');
-  }
-});
+    loginSection.classList.add("oculto");
+    dashboardSection.classList.remove("oculto");
 
-document.getElementById('btn-logout').addEventListener('click', () => {
-  Swal.fire({
-    title: '¿Cerrar sesión?',
-    icon: 'question',
-    showCancelButton: true,
-    confirmButtonColor: '#d33',
-    confirmButtonText: 'Sí, salir'
-  }).then((result) => {
-    if (result.isConfirmed) {
-      location.reload();
-    }
-  });
-});
+    // Resetear permisos: mostrar todos los botones
+    document.querySelectorAll("form button[type='submit']").forEach(btn => btn.style.display = "inline-block");
 
-// --- USUARIOS ---
-async function cargarUsuarios() {
-  const res = await fetch(`${API}/usuarios`);
-  const usuarios = await res.json();
-  tablaUsuarios.innerHTML = '';
-  
-  usuarios.forEach(u => {
-    tablaUsuarios.innerHTML += `
-      <tr>
-        <td class="ps-4 fw-bold text-muted">#${u.id}</td>
-        <td><span class="badge bg-light text-dark border">${u.cedula}</span></td>
-        <td class="fw-semibold">${u.nombre}</td>
-        <td class="text-end pe-4">
-          <button class="btn btn-sm btn-outline-primary me-1" onclick="prepararEdicionUsuario('${u.id}', '${u.cedula}', '${u.nombre}', '${u.clave}')">
-            <i class="bi bi-pencil-square"></i>
-          </button>
-          <button class="btn btn-sm btn-outline-danger" onclick="eliminarUsuario('${u.id}')">
-            <i class="bi bi-trash"></i>
-          </button>
-        </td>
-      </tr>
-    `;
-  });
-}
-
-document.getElementById('form-usuario').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const id = document.getElementById('user-id').value;
-  const cedula = document.getElementById('user-cedula').value;
-  const nombre = document.getElementById('user-nombre').value;
-  const clave = document.getElementById('user-clave').value;
-
-  const endpoint = id ? `${API}/usuarios/${id}` : `${API}/usuarios`;
-  const metodo = id ? 'PUT' : 'POST';
-
-  await fetch(endpoint, {
-    method: metodo,
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ cedula, nombre, clave })
-  });
-
-  Swal.fire('Guardado', 'Usuario procesado correctamente', 'success');
-  window.limpiarFormUsuario();
-  cargarUsuarios();
-});
-
-window.eliminarUsuario = async (id) => {
-  const result = await Swal.fire({
-    title: '¿Estás seguro?',
-    text: "No podrás revertir esto",
-    icon: 'warning',
-    showCancelButton: true,
-    confirmButtonColor: '#d33',
-    confirmButtonText: 'Sí, borrar'
-  });
-
-  if (result.isConfirmed) {
-    await fetch(`${API}/usuarios/${id}`, { method: 'DELETE' });
-    Swal.fire('Eliminado', 'El usuario ha sido borrado.', 'success');
+    // Cargar datos
     cargarUsuarios();
+    cargarMaterias();
+    cargarEstudiantes();
+    cargarNotas();
+
+    // Si no es admin: ocultar botones de acción
+    if (usuarioActual.rol !== "admin") {
+      document.querySelectorAll("form button[type='submit']").forEach(btn => btn.style.display = "none");
+      document.querySelectorAll("tbody button").forEach(btn => btn.remove());
+    }
+  } catch (err) {
+    Swal.fire("Error", err.message, "error");
   }
-};
+});
 
-window.prepararEdicionUsuario = (id, cedula, nombre, clave) => {
-  document.getElementById('user-id').value = id;
-  document.getElementById('user-cedula').value = cedula;
-  document.getElementById('user-nombre').value = nombre;
-  document.getElementById('user-clave').value = clave;
-  document.getElementById('titulo-form-usuario').innerHTML = '<i class="bi bi-pencil-square"></i> Editar Usuario #' + id;
-};
+// ====================
+// FUNCIONES
+// ====================
+function mostrarPanel(panel) {
+  panelUsuarios.classList.add("oculto");
+  panelMaterias.classList.add("oculto");
+  panelEstudiantes.classList.add("oculto");
+  panelNotas.classList.add("oculto");
 
-// --- MATERIAS ---
-async function cargarMaterias() {
-  const res = await fetch(`${API}/materias`);
-  const materias = await res.json();
-  tablaMaterias.innerHTML = '';
+  switch(panel) {
+    case "usuarios": panelUsuarios.classList.remove("oculto"); break;
+    case "materias": panelMaterias.classList.remove("oculto"); break;
+    case "estudiantes": panelEstudiantes.classList.remove("oculto"); break;
+    case "notas": panelNotas.classList.remove("oculto"); break;
+  }
+}
 
-  materias.forEach(m => {
-    tablaMaterias.innerHTML += `
-      <tr>
-        <td class="ps-4 fw-bold text-muted">#${m.id}</td>
-        <td><span class="badge bg-info bg-opacity-10 text-info border border-info">${m.codigo}</span></td>
-        <td class="fw-semibold">${m.nombre}</td>
-        <td class="text-end pe-4">
-          <button class="btn btn-sm btn-outline-info me-1" onclick="prepararEdicionMateria('${m.id}', '${m.codigo}', '${m.nombre}')">
-            <i class="bi bi-pencil-square"></i>
-          </button>
-          <button class="btn btn-sm btn-outline-danger" onclick="eliminarMateria('${m.id}')">
-            <i class="bi bi-trash"></i>
-          </button>
-        </td>
-      </tr>
+// ====================
+// CARGA DE DATOS
+// ====================
+async function cargarUsuarios() {
+  const res = await fetch(`${api}/usuarios`);
+  const usuarios = await res.json();
+  tablaUsuariosBody.innerHTML = "";
+  usuarios.forEach(u => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${u.id}</td>
+      <td>${u.cedula}</td>
+      <td>${u.nombre}</td>
+      <td>${u.rol}</td>
+      <td>${usuarioActual.rol === "admin" ? `<button onclick="eliminarUsuario(${u.id})" class="btn btn-sm btn-danger">Eliminar</button>` : ""}</td>
     `;
+    tablaUsuariosBody.appendChild(tr);
   });
 }
 
-document.getElementById('form-materia').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const id = document.getElementById('materia-id').value;
-  const codigo = document.getElementById('materia-codigo').value;
-  const nombre = document.getElementById('materia-nombre').value;
-
-  const endpoint = id ? `${API}/materias/${id}` : `${API}/materias`;
-  const metodo = id ? 'PUT' : 'POST';
-
-  await fetch(endpoint, {
-    method: metodo,
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ codigo, nombre })
+async function cargarMaterias() {
+  const res = await fetch(`${api}/materias`);
+  const materias = await res.json();
+  tablaMateriasBody.innerHTML = "";
+  materias.forEach(m => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${m.id}</td>
+      <td>${m.codigo}</td>
+      <td>${m.nombre}</td>
+      <td>${usuarioActual.rol === "admin" ? `<button onclick="eliminarMateria(${m.id})" class="btn btn-sm btn-danger">Eliminar</button>` : ""}</td>
+    `;
+    tablaMateriasBody.appendChild(tr);
   });
 
-  Swal.fire('Guardado', 'Materia procesada correctamente', 'success');
-  window.limpiarFormMateria();
-  cargarMaterias();
+  // Notas
+  notaMateria.innerHTML = materias.map(m => `<option value="${m.id}">${m.nombre}</option>`).join("");
+}
+
+async function cargarEstudiantes() {
+  const res = await fetch(`${api}/estudiantes`);
+  const estudiantes = await res.json();
+  tablaEstudiantesBody.innerHTML = "";
+  estudiantes.forEach(e => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${e.id}</td>
+      <td>${e.cedula}</td>
+      <td>${e.nombre}</td>
+      <td>${usuarioActual.rol === "admin" ? `<button onclick="eliminarEstudiante(${e.id})" class="btn btn-sm btn-danger">Eliminar</button>` : ""}</td>
+    `;
+    tablaEstudiantesBody.appendChild(tr);
+  });
+
+  // Notas
+  notaEstudiante.innerHTML = estudiantes.map(e => `<option value="${e.id}">${e.nombre}</option>`).join("");
+}
+
+async function cargarNotas() {
+  const res = await fetch(`${api}/notas`);
+  const notas = await res.json();
+  tablaNotasBody.innerHTML = "";
+  notas.forEach(n => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${n.estudiante}</td>
+      <td>${n.materia}</td>
+      <td>${n.valor}</td>
+      <td>${usuarioActual.rol === "admin" ? `<button onclick="eliminarNota(${n.id})" class="btn btn-sm btn-danger">Eliminar</button>` : ""}</td>
+    `;
+    tablaNotasBody.appendChild(tr);
+  });
+}
+
+// ====================
+// CRUD ELIMINAR
+// ====================
+window.eliminarUsuario = async id => { if (!confirm("Eliminar usuario?")) return; await fetch(`${api}/usuarios/${id}`, { method: "DELETE" }); cargarUsuarios(); };
+window.eliminarMateria = async id => { if (!confirm("Eliminar materia?")) return; await fetch(`${api}/materias/${id}`, { method: "DELETE" }); cargarMaterias(); };
+window.eliminarEstudiante = async id => { if (!confirm("Eliminar estudiante?")) return; await fetch(`${api}/estudiantes/${id}`, { method: "DELETE" }); cargarEstudiantes(); };
+window.eliminarNota = async id => { if (!confirm("Eliminar nota?")) return; await fetch(`${api}/notas/${id}`, { method: "DELETE" }); cargarNotas(); };
+
+// ====================
+// FORMULARIOS
+// ====================
+formUsuario.addEventListener("submit", async e => {
+  e.preventDefault();
+  await fetch(`${api}/usuarios`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({
+    cedula: document.getElementById("user-cedula").value,
+    nombre: document.getElementById("user-nombre").value,
+    clave: document.getElementById("user-clave").value
+  }) });
+  formUsuario.reset(); cargarUsuarios();
 });
 
-window.eliminarMateria = async (id) => {
-  const result = await Swal.fire({
-    title: '¿Borrar Materia?',
-    icon: 'warning',
-    showCancelButton: true,
-    confirmButtonColor: '#d33',
-    confirmButtonText: 'Sí, borrar'
-  });
+formMateria.addEventListener("submit", async e => {
+  e.preventDefault();
+  await fetch(`${api}/materias`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({
+    codigo: document.getElementById("materia-codigo").value,
+    nombre: document.getElementById("materia-nombre").value
+  }) });
+  formMateria.reset(); cargarMaterias();
+});
 
-  if (result.isConfirmed) {
-    await fetch(`${API}/materias/${id}`, { method: 'DELETE' });
-    Swal.fire('Eliminado', 'La materia ha sido eliminada.', 'success');
-    cargarMaterias();
-  }
-};
+formEstudiante.addEventListener("submit", async e => {
+  e.preventDefault();
+  await fetch(`${api}/estudiantes`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({
+    cedula: document.getElementById("est-cedula").value,
+    nombre: document.getElementById("est-nombre").value
+  }) });
+  formEstudiante.reset(); cargarEstudiantes();
+});
 
-window.prepararEdicionMateria = (id, codigo, nombre) => {
-  document.getElementById('materia-id').value = id;
-  document.getElementById('materia-codigo').value = codigo;
-  document.getElementById('materia-nombre').value = nombre;
-  document.getElementById('titulo-form-materia').innerHTML = '<i class="bi bi-pencil-square"></i> Editar Materia #' + id;
-};
+formNotas.addEventListener("submit", async e => {
+  e.preventDefault();
+  await fetch(`${api}/notas`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({
+    estudiante_id: notaEstudiante.value,
+    materia_id: notaMateria.value,
+    valor: document.getElementById("nota-valor").value
+  }) });
+  formNotas.reset(); cargarNotas();
+});
+
+// ====================
+// MENÚ
+// ====================
+document.getElementById("btn-usuarios").addEventListener("click", () => mostrarPanel("usuarios"));
+document.getElementById("btn-materias").addEventListener("click", () => mostrarPanel("materias"));
+document.getElementById("btn-estudiantes").addEventListener("click", () => mostrarPanel("estudiantes"));
+document.getElementById("btn-notas").addEventListener("click", () => mostrarPanel("notas"));
+
+// ====================
+// LOGOUT
+// ====================
+document.getElementById("btn-logout").addEventListener("click", () => {
+  usuarioActual = null;
+  dashboardSection.classList.add("oculto");
+  loginSection.classList.remove("oculto");
+});

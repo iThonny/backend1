@@ -1,10 +1,7 @@
-import pkg from 'pg';
-const { Pool } = pkg;
+import dotenv from "dotenv";
+dotenv.config();
 
-export const pool = new Pool({
-  user: "juanzambrano",  
-  host: "localhost",
-  database: "postgres", 
-  password: "85290",   
-  port: 5432,
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false } // obligatorio para Supabase
 });
